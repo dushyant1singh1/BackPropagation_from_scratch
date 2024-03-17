@@ -11,9 +11,9 @@ def load_data(name):
 
 
         elif(name=='mnist'):
-                (train_X, train_y), (test_X, test_y) = mnist.load_data()
+                (train_x, train_y), (test_x, test_y) = mnist.load_data()
                 x_train,y_train,x_val,y_val = data_processing(train_x,train_y)
-                return X_train,y_train,x_val,y_val,test_x,test_y
+                return x_train,y_train,x_val,y_val,test_x,test_y
 
 def data_processing(train_x,train_y):
         split = 0.1

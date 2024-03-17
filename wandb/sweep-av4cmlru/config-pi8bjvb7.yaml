@@ -1,0 +1,24 @@
+wandb_version: 1
+
+activations:
+  value: tanh
+batch_size:
+  value: 32
+beta_value:
+  value: 0.999
+epochs:
+  value: 15
+initialization:
+  value: xavier
+learning_rate:
+  value: 0.0001
+loss_type:
+  value: cross_entropy
+neurons_in_hidden_layers:
+  value: 128
+number_of_hidden_layers:
+  value: 3
+optimizers:
+  value: nadam
+weight_decay:
+  value: 0

@@ -89,7 +89,7 @@ class FeedForwardNN:
         }
 
         self.Initializer_dict = {
-            "xavier": self.xavier,
+            "Xavier": self.xavier,
             "random": self.random,
         }
 
