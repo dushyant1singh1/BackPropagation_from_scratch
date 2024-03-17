@@ -75,12 +75,12 @@ args = parser.parse_args()
 # print(args.activation)
 train_x,train_y,x_val,y_val,test_x,test_y = load_data(args.dataset)
 classes  = 10
-# wandb.login()
-# wandb.init()
+wandb.login()
+wandb.init(name = args.wandb_project,entity=args.wandb_entity)
 sizeHL = [args.hidden_size for i in range(args.num_layers)]
 ob = FeedForwardNN(args.num_layers,sizeHL,train_x,train_y,x_val,y_val,test_x,test_y,args.optimizer,args.batch_size,args.learning_rate,args.epochs,args.activation,args.weight_init,args.loss, args.weight_decay)
 ob.train(optimizer=args.optimizer,momentum=args.momentum,beta1=args.beta1,beta2=args.beta2)
-
+wandb.finish()
 
 
 
