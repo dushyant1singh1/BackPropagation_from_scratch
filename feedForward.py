@@ -2,6 +2,7 @@ import numpy as np
 from tensorflow.keras.datasets import fashion_mnist
 from tqdm import tqdm
 import decimal
+import tensorflow as tf
 
 def sigmoid(z):
     z = np.clip(z,-500,500)
@@ -16,12 +17,12 @@ def tanh(z):
 #     #return np.maximum(z,0)
 #     #return np.where(z<0, 0.01*z, z)
 def relu(z):
-    return np.maximum(z*0.01,z)
+    return np.maximum(0,z)
 
 
 def softmax(Z):
     ep = 1e-5
-    Z = np.clip(Z,-600,600)
+    Z = np.clip(Z,-500,500)
     return (np.exp(Z) / (np.sum(np.exp(Z)))+ep)
 
 # def softmax(Z):
@@ -43,14 +44,14 @@ def grad_tanh(z):
 def grad_relu(x):
     alpha=0.01
     dx = np.ones_like(x)
-    dx[x < 0] = alpha
+    dx[x < 0] = 0
     return dx
 
 class FeedForwardNN:
     def __init__(
         self, layers, sizeHL, x_train, y_train, x_val, y_val, 
-        x_test, y_test, optimizer, batchSize, weightDecay, lr, iterations, activation,
-        initializer, loss):
+        x_test, y_test, optimizer, batchSize, lr, iterations, activation,
+        initializer, loss, weight_decay):
         self.classes = 10
         self.layers = layers+2
         self.layersSize = [784] + sizeHL + [10]
@@ -72,16 +73,16 @@ class FeedForwardNN:
         self.y_train = y_train
         self.y_val = y_val
         self.y_test = y_test
-        self.Activations_dict = {"SIGMOID": sigmoid, "TANH": tanh, "RELU": relu}
+        self.Activations_dict = {"sigmoid": sigmoid, "tanh": tanh, "relu": relu}
         self.derActivation_dict = {
-            "SIGMOID": grad_sigmoid,
-            "TANH": grad_tanh,
-            "RELU": grad_relu,
+            "sigmoid": grad_sigmoid,
+            "tanh": grad_tanh,
+            "relu": grad_relu,
         }
 
         self.Initializer_dict = {
-            "XAVIER": self.xavier,
-            "RANDOM": self.random,
+            "xavier": self.xavier,
+            "random": self.random,
         }
 
         # self.Optimizer_dict = {
@@ -97,12 +98,29 @@ class FeedForwardNN:
     #    self.optimzer = self.Optimizer_dict[optimizer]
         self.initializer = self.Initializer_dict[initializer]
         self.lossFunction = loss
+        self.weightDecay = weight_decay
         self.epochs = iterations
         self.batchSize = batchSize
         self.lr = lr
 
         # initializing weights and biases
         self.weights, self.biases = self.initializeWeights(self.layersSize)
+
+    ## this function call make sure that we call right optimizer algo
+    def train(self,optimizer,momentum=0.9,beta1=0.9,beta2=0.999):
+        if(optimizer=='sgd'):
+            self.sgd()
+        elif(optimizer=='mgd'):
+            self.mgd(momentum)
+        elif(optimizer=='nag'):
+            self.nag(momentum)
+        elif(optimizer=='rmsprop'):
+            self.rmsProp(momentum)
+        elif(optimizer=='adam'):
+            self.adam(beta1,beta2)
+        elif(optimizer=='nadam'):
+            self.nadam(beta1,beta2)
+
 
     def oneHotEncoder(self,rawY):
         onehot = np.zeros((self.classes,rawY.shape[0]))
@@ -112,14 +130,25 @@ class FeedForwardNN:
         return onehot
         
 
-    def accuracy(self,x,y):
+    def accuracyLoss(self,x,y):
         pred,H,A = self.forwardPropagation(x)
         pred = pred.T
         count =0
+        crossloss = []
         for i in range(len(y)):
             if(np.argmax(pred[i])==y[i]):
                 count+=1
-        return count/(len(y))
+        loss  = -np.mean(np.sum(self.oneHotEncoder(y).T * np.log(pred + 1e-15), axis=1))
+        return count/(len(y)),loss
+
+    # def meanSquaredErrorLoss( y, pred):
+    #     mse = np.mean((y - pred) ** 2)
+    #     return mse
+
+    def crossEntropyLoss( y, pred):
+        CE = [-Y_true[i] * np.log(Y_pred[i]) for i in range(len(Y_pred))]
+        crossEntropy = np.mean(CE)
+        return crossEntropy
 
     def initializeWeights(self,layersSize):
         weights =[]
@@ -154,7 +183,7 @@ class FeedForwardNN:
         pred = softmax(A[layers-1])
         return pred,H,A
 
-    def backPropagation(self, pred, weights, H, A, x_train, y_train, weight_decay=0 ):
+    def backPropagation(self, pred, weights, H, A, x_train, y_train):
         dW = []
         dB = []
         # x_train has the shape of 784*batch size
@@ -163,9 +192,9 @@ class FeedForwardNN:
         gradients ={}
         l = len(self.layersSize)-2
         # print(l)
-        if self.lossFunction =='CROSS':
+        if self.lossFunction =='cross':
             gradients['a'+str(l)] = -(y_train - pred)
-        elif self.lossFunction=='MSE':
+        elif self.lossFunction=='mse':
             gradients['a'+str(l)] = np.multiply(2*(pred-y_train),np.multiply(pred,(1-pred))) 
         #print(weights[0])
         # print(l)
@@ -184,6 +213,9 @@ class FeedForwardNN:
         dB.append(np.sum(gradients['a'+str(0)],axis =1).reshape(-1,1))
         dW.reverse()
         dB.reverse()
+
+        for i in range(self.layers-1):
+            dW[i] = dW[i] + self.weights[i]*self.weightDecay
         return dW,dB
     
     def sgd(self,weight_decay=0):
@@ -198,15 +230,19 @@ class FeedForwardNN:
             while(j<totalData):
                 pred,H,A  = self.forwardPropagation(self.X[:,j:j+self.batchSize])
                 dW,dB = self.backPropagation(pred, self.weights, H, A, self.X[:,j:j+self.batchSize],self.Y[:,j:j+self.batchSize])
-
+                # 10,batch size = pred.shape
+                #print(pred.shape)
                 j+=self.batchSize
 
                 for k in range(layers-1):
                     self.weights[k] = self.weights[k] - self.lr*dW[k]
                     self.biases[k] = self.biases[k] - self.lr*dB[k]
-            print("Train Accuracy - %.5f, Val Accuracy - %.5f EPOCH ==> %d"%(self.accuracy(self.X,self.y_train),self.accuracy(self.X_val,self.y_val),i+1))
+            train_acc, train_loss = self.accuracyLoss(self.X,self.y_train)
+            val_acc, val_loss = self.accuracyLoss(self.X_val,self.y_val)
+            #print(type(train_acc),type(train_loss),type(val_acc),type(val_loss))
+            print("Train Accuracy - %.5f, Val Accuracy - %.5f, Train Loss - %.5f, Val Loss - %.5f,  EPOCH ==> %d"%(train_acc,val_acc,train_loss,val_loss,i+1))
             
-    def mgd(self,beta,weight_decay=0):
+    def mgd(self,beta):
         #print(self.derivation_activation)
         iterations = self.epochs
         layers = self.layers
@@ -230,7 +266,10 @@ class FeedForwardNN:
                     self.weights[k] -= self.lr*uW[k]
                     self.biases[k] -= self.lr*uB[k]
 
-            print("Train Accuracy - %.5f, Val Accuracy - %.5f EPOCH ==> %d"%(self.accuracy(self.X,self.y_train),self.accuracy(self.X_val,self.y_val),i+1))
+            train_acc, train_loss = self.accuracyLoss(self.X,self.y_train)
+            val_acc, val_loss = self.accuracyLoss(self.X_val,self.y_val)
+            #print(type(train_acc),type(train_loss),type(val_acc),type(val_loss))
+            print("Train Accuracy - %.5f, Val Accuracy - %.5f, Train Loss - %.5f, Val Loss - %.5f,  EPOCH ==> %d"%(train_acc,val_acc,train_loss,val_loss,i+1))
             
     def nag(self,beta):
         iterations = self.epochs
@@ -265,9 +304,12 @@ class FeedForwardNN:
                 pvW = vW
                 pvB = vB
                 j+=self.batchSize
-            print("Train Accuracy - %.5f, Val Accuracy - %.5f EPOCH ==> %d"%(self.accuracy(self.X,self.y_train),self.accuracy(self.X_val,self.y_val),i+1))
+            train_acc, train_loss = self.accuracyLoss(self.X,self.y_train)
+            val_acc, val_loss = self.accuracyLoss(self.X_val,self.y_val)
+            #print(type(train_acc),type(train_loss),type(val_acc),type(val_loss))
+            print("Train Accuracy - %.5f, Val Accuracy - %.5f, Train Loss - %.5f, Val Loss - %.5f,  EPOCH ==> %d"%(train_acc,val_acc,train_loss,val_loss,i+1))
 
-    def rmsProp(self,beta,weight_decay=0):
+    def rmsProp(self,beta):
         
         layers = self.layers                    
         print(layers)
@@ -291,7 +333,10 @@ class FeedForwardNN:
                 
                 j+=self.batchSize
             
-            print("Train Accuracy - %.5f, Val Accuracy - %.5f EPOCH ==> %d"%(self.accuracy(self.X,self.y_train),self.accuracy(self.X_val,self.y_val),i+1))
+            train_acc, train_loss = self.accuracyLoss(self.X,self.y_train)
+            val_acc, val_loss = self.accuracyLoss(self.X_val,self.y_val)
+            #print(type(train_acc),type(train_loss),type(val_acc),type(val_loss))
+            print("Train Accuracy - %.5f, Val Accuracy - %.5f, Train Loss - %.5f, Val Loss - %.5f,  EPOCH ==> %d"%(train_acc,val_acc,train_loss,val_loss,i+1))
                 
 
     def adam(self,beta1,beta2):
@@ -324,7 +369,10 @@ class FeedForwardNN:
                     self.weights[c] -= self.lr*m_w_hat[c]/(np.sqrt(v_w_hat[c])+eps)
                     self.biases[c] -= self.lr*m_b_hat[c]/(np.sqrt(v_b_hat[c])+eps)
             
-            print("Train Accuracy - %.5f, Val Accuracy - %.5f EPOCH ==> %d"%(self.accuracy(self.X,self.y_train),self.accuracy(self.X_val,self.y_val),i+1))
+            train_acc, train_loss = self.accuracyLoss(self.X,self.y_train)
+            val_acc, val_loss = self.accuracyLoss(self.X_val,self.y_val)
+            #print(type(train_acc),type(train_loss),type(val_acc),type(val_loss))
+            print("Train Accuracy - %.5f, Val Accuracy - %.5f, Train Loss - %.5f, Val Loss - %.5f,  EPOCH ==> %d"%(train_acc,val_acc,train_loss,val_loss,i+1))
 
     def nadam(self,beta1,beta2):
         layers = self.layers
@@ -356,24 +404,28 @@ class FeedForwardNN:
                     self.biases[c] -= (self.lr/np.sqrt(v_b_hat[c]+eps))*(beta1*m_b_hat[c]+(1- beta1)*dB[c]/(1-beta1**(i+1)))
                 
             
-            print("Train Accuracy - %.5f, Val Accuracy - %.5f EPOCH ==> %d"%(self.accuracy(self.X,self.y_train),self.accuracy(self.X_val,self.y_val),i+1))
+            train_acc, train_loss = self.accuracyLoss(self.X,self.y_train)
+            val_acc, val_loss = self.accuracyLoss(self.X_val,self.y_val)
+            #print(type(train_acc),type(train_loss),type(val_acc),type(val_loss))
+            print("Train Accuracy - %.5f, Val Accuracy - %.5f, Train Loss - %.5f, Val Loss - %.5f,  EPOCH ==> %d"%(train_acc,val_acc,train_loss,val_loss,i+1))
 
 
 (train_x,train_y),(test_x,test_y) = fashion_mnist.load_data()
 classes =['Ankle boot','T-shirt/top','Dress','Pullover','sneaker','Sandal','Trouser','Shirt','Coat','Bag']
 
 
-layers = 4
-sizeHL =[512,128,64,32]
-optimizer = 'SGD'
-batchSize = 200
-weightDecay = 0
+layers = 3
+no_of_hidden_neurons = 128
+sizeHL = [no_of_hidden_neurons for i in range(4)]
+optimizer = 'mgd'
+batchSize = 32
+weight_decay = 0.5
 lr = 0.0001
-iterations = 100
-activation = 'TANH'
-initializer = 'XAVIER'
-loss= 'CROSS'
-momentum = 0.4
+iterations = 10
+activation = 'tanh'
+initializer = 'xavier'
+loss= 'cross'
+momentum = 0.9
 beta1 = 0.5
 beta2 = 0.5
 split = 0.1
@@ -390,6 +442,6 @@ y_val = train_y[data_train:]
 
 print(x_train.shape,y_train.shape)
 print(x_val.shape,y_val.shape)
-# layers, sizeHL, x_train, y_train, x_val, y_val, x_test, y_test, optimizer, batchSize, weightDecay, lr, iterations, activation,initializer, loss
-ob = FeedForwardNN(layers,sizeHL,x_train,y_train,x_val,y_val,test_x,test_y,'SGD',batchSize,weightDecay,lr,iterations,activation,initializer,loss)
-ob.nadam(beta1,beta2)
+# layers, sizeHL, x_train, y_train, x_val, y_val, x_test, y_test, optimizer, batchSize, weightDecay, lr, iterations, activation,initializer, loss, weightDecay
+ob = FeedForwardNN(layers,sizeHL,x_train,y_train,x_val,y_val,test_x,test_y,optimizer,batchSize,lr,iterations,activation,initializer,loss, weight_decay)
+ob.train(optimizer=optimizer,momentum=momentum)
