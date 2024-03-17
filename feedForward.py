@@ -118,8 +118,8 @@ class FeedForwardNN:
     def train(self,optimizer,momentum=0.9,beta1=0.9,beta2=0.999):
         if(optimizer=='sgd'):
             self.sgd()
-        elif(optimizer=='mgd'):
-            self.mgd(momentum)
+        elif(optimizer=='momentum'):
+            self.momentum(momentum)
         elif(optimizer=='nag'):
             self.nag(momentum)
         elif(optimizer=='rmsprop'):
@@ -262,7 +262,7 @@ class FeedForwardNN:
             #print(type(train_acc),type(train_loss),type(val_acc),type(val_loss))
             print("Train Accuracy - %.5f, Val Accuracy - %.5f, Train Loss - %.5f, Val Loss - %.5f,  EPOCH ==> %d"%(train_acc,val_acc,train_loss,val_loss,i+1))
             
-    def mgd(self,beta):
+    def momentum(self,beta):
         #print(self.derivation_activation)
         iterations = self.epochs
         layers = self.layers

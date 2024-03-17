@@ -1,0 +1,44 @@
+{
+    "os": "Windows-10-10.0.22631-SP0",
+    "python": "3.11.3",
+    "heartbeatAt": "2024-03-17T17:34:17.875252",
+    "startedAt": "2024-03-17T17:34:16.554932",
+    "docker": null,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "wandab_config-jvsc-525469a9-ba94-4210-aeee-0522f7cde645b195ee1f-bcd8-4fb9-b581-4783fa1e79c6.ipynb",
+    "codePathLocal": null,
+    "root": "E:/mtech/sem2/deep/assignment_1/BackPropagation_from_scratch",
+    "git": {
+        "remote": "https://github.com/dushyant1singh1/BackPropagation_from_scratch.git",
+        "commit": "e67cc5adc919f6730e07f1ce2039249f3893c28b"
+    },
+    "email": "dushyant1singh1@gmail.com",
+    "host": "samsung-book-3-pro",
+    "username": "singh",
+    "executable": "C:\\Python311\\python.exe",
+    "cpu_count": 12,
+    "cpu_count_logical": 16,
+    "cpu_freq": {
+        "current": 2200.0,
+        "min": 0.0,
+        "max": 2200.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 2200.0,
+            "min": 0.0,
+            "max": 2200.0
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 29.810543060302734,
+            "used": 6.463600158691406
+        }
+    },
+    "memory": {
+        "total": 15.570236206054688
+    }
+}
