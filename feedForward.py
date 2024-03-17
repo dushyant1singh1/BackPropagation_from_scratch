@@ -4,6 +4,9 @@ from tqdm import tqdm
 import decimal
 import tensorflow as tf
 
+def indentity(z):
+    return z
+
 def sigmoid(z):
     z = np.clip(z,-500,500)
     return 1.0 / (1 + np.exp(-(z)))
@@ -37,6 +40,8 @@ def grad_sigmoid(z):
 def grad_tanh(z):
     return 1 - np.tanh(z) ** 2
 
+def grad_identity(z):
+    return 1
 
 # def grad_relu(z):
 #     return (z>0)*np.ones(z.shape) + (z<0)*(0.01*np.ones(z.shape) )
@@ -46,6 +51,8 @@ def grad_relu(x):
     dx = np.ones_like(x)
     dx[x < 0] = 0
     return dx
+
+
 
 class FeedForwardNN:
     def __init__(
@@ -73,11 +80,12 @@ class FeedForwardNN:
         self.y_train = y_train
         self.y_val = y_val
         self.y_test = y_test
-        self.Activations_dict = {"sigmoid": sigmoid, "tanh": tanh, "relu": relu}
+        self.Activations_dict = {"sigmoid": sigmoid, "tanh": tanh, "relu": relu, "identity":indentity}
         self.derActivation_dict = {
             "sigmoid": grad_sigmoid,
             "tanh": grad_tanh,
             "relu": grad_relu,
+            "identity":grad_identity
         }
 
         self.Initializer_dict = {
@@ -138,12 +146,16 @@ class FeedForwardNN:
         for i in range(len(y)):
             if(np.argmax(pred[i])==y[i]):
                 count+=1
-        loss  = -np.mean(np.sum(self.oneHotEncoder(y).T * np.log(pred + 1e-15), axis=1))
-        return count/(len(y)),loss
+        if self.lossFunction =="mean_squared_error":
+            loss = np.mean((self.oneHotEncoder(y).T-pred)**2)
+            return count/len(y), loss
+        elif self.lossFunction=="cross_entropy":
+            loss  = -np.mean(np.sum(self.oneHotEncoder(y).T * np.log(pred + 1e-15), axis=1))
+            return count/(len(y)),loss
 
-    # def meanSquaredErrorLoss( y, pred):
-    #     mse = np.mean((y - pred) ** 2)
-    #     return mse
+    def meanSquaredErrorLoss( y, pred):
+        mse = np.mean((y - pred) ** 2)
+        return mse
 
     def crossEntropyLoss( y, pred):
         CE = [-Y_true[i] * np.log(Y_pred[i]) for i in range(len(Y_pred))]
@@ -191,28 +203,34 @@ class FeedForwardNN:
         # x_train has the shape of 784*batch size
         #output layer gradient
         #if self.lossFunction =='CROSS':
-        gradients ={}
+        gradients =[]
         l = len(self.layersSize)-2
         # print(l)
-        if self.lossFunction =='cross':
-            gradients['a'+str(l)] = -(y_train - pred)
-        elif self.lossFunction=='mse':
-            gradients['a'+str(l)] = np.multiply(2*(pred-y_train),np.multiply(pred,(1-pred))) 
+
+        if self.lossFunction =='cross_entropy':
+            # gradients['a'+str(l)] = -(y_train - pred)
+            gradients.append(-(y_train - pred))
+        elif self.lossFunction=='mean_squared_error':
+            # gradients['a'+str(l)] = np.multiply(2*(pred-y_train),np.multiply(pred,(1-pred))) 
+            gradients.append(np.multiply(2*(pred-y_train),np.multiply(pred,(1-pred))) )
         #print(weights[0])
         # print(l)
         for i in range(l,0,-1):
-            dw = np.dot(gradients['a'+str(i)],H[i-1].T)
-            db = np.sum(gradients['a'+str(i)],axis=1).reshape(-1,1)
+            # dw = np.dot(gradients['a'+str(i)],H[i-1].T)
+            dw = np.dot(gradients[0],H[i-1].T)
+            # db = np.sum(gradients['a'+str(i)],axis=1).reshape(-1,1)
+            db = np.sum(gradients[0],axis=1).reshape(-1,1)
             dW.append(dw)
             dB.append(db)
             # print("iteration : {i}")
             # print(self.weights[i].shape)
             # print(gradients['a'+str(i)].shape)
             
-            dh = np.matmul(weights[i].T,gradients['a'+str(i)])
-            gradients['a'+str(i-1)] = np.multiply(dh,self.derivation_activation(A[i-1]))
-        dW.append(np.dot(gradients['a'+str(0)],x_train.T))
-        dB.append(np.sum(gradients['a'+str(0)],axis =1).reshape(-1,1))
+            # dh = np.matmul(weights[i].T,gradients['a'+str(i)])
+            dh = np.matmul(weights[i].T,gradients[0])
+            gradients[0] = np.multiply(dh,self.derivation_activation(A[i-1]))
+        dW.append(np.dot(gradients[0],x_train.T))
+        dB.append(np.sum(gradients[0],axis =1).reshape(-1,1))
         dW.reverse()
         dB.reverse()
 
@@ -413,37 +431,37 @@ class FeedForwardNN:
 
 
 (train_x,train_y),(test_x,test_y) = fashion_mnist.load_data()
-classes =['Ankle boot','T-shirt/top','Dress','Pullover','sneaker','Sandal','Trouser','Shirt','Coat','Bag']
 
 
-layers = 3
-no_of_hidden_neurons = 128
-sizeHL = [no_of_hidden_neurons for i in range(4)]
-optimizer = 'nadam'
-batchSize = 32
-weight_decay = 0
-lr = 0.0001
-iterations = 100
-activation = 'tanh'
-initializer = 'xavier'
-loss= 'cross'
-momentum = 0.9
-beta1 = 0.9
-beta2 = 0.99
-split = 0.1
-total_data = train_x.shape[0]
-indices = np.arange(total_data)
-np.random.shuffle(indices)
-train_x = train_x[indices]
-train_y = train_y[indices]
-data_train = int((1-split)*total_data)
-x_train = train_x[:data_train]
-y_train = train_y[:data_train]
-x_val = train_x[data_train:]
-y_val = train_y[data_train:]
 
-print(x_train.shape,y_train.shape)
-print(x_val.shape,y_val.shape)
-# layers, sizeHL, x_train, y_train, x_val, y_val, x_test, y_test, optimizer, batchSize, weightDecay, lr, iterations, activation,initializer, loss, weightDecay
-ob = FeedForwardNN(layers,sizeHL,x_train,y_train,x_val,y_val,test_x,test_y,optimizer,batchSize,lr,iterations,activation,initializer,loss, weight_decay)
-ob.train(optimizer=optimizer,beta1=beta1,beta2=beta2)
+# layers = 3
+# no_of_hidden_neurons = 128
+# sizeHL = [no_of_hidden_neurons for i in range(4)]
+# optimizer = 'nadam'
+# batchSize = 32
+# weight_decay = 0
+# lr = 0.0001
+# iterations = 100
+# activation = 'tanh'
+# initializer = 'xavier'
+# loss= 'mean_squared_error'
+# momentum = 0.9
+# beta1 = 0.9
+# beta2 = 0.99
+# split = 0.1
+# total_data = train_x.shape[0]
+# indices = np.arange(total_data)
+# np.random.shuffle(indices)
+# train_x = train_x[indices]
+# train_y = train_y[indices]
+# data_train = int((1-split)*total_data)
+# x_train = train_x[:data_train]
+# y_train = train_y[:data_train]
+# x_val = train_x[data_train:]
+# y_val = train_y[data_train:]
+
+# print(x_train.shape,y_train.shape)
+# print(x_val.shape,y_val.shape)
+# # layers, sizeHL, x_train, y_train, x_val, y_val, x_test, y_test, optimizer, batchSize, weightDecay, lr, iterations, activation,initializer, loss, weightDecay
+# ob = FeedForwardNN(layers,sizeHL,x_train,y_train,x_val,y_val,test_x,test_y,optimizer,batchSize,lr,iterations,activation,initializer,loss, weight_decay)
+# ob.train(optimizer=optimizer,beta1=beta1,beta2=beta2)
