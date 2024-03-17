@@ -1,0 +1,45 @@
+{
+    "os": "Windows-10-10.0.22631-SP0",
+    "python": "3.11.3",
+    "heartbeatAt": "2024-03-17T15:53:36.562925",
+    "startedAt": "2024-03-17T15:53:35.532935",
+    "docker": null,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "E:\\mtech\\sem2\\deep\\assignment_1\\BackPropagation_from_scratch\\wandb_image_local.py",
+    "codePathLocal": "wandb_image_local.py",
+    "codePath": "wandb_image_local.py",
+    "git": {
+        "remote": "https://github.com/dushyant1singh1/BackPropagation_from_scratch.git",
+        "commit": "a41d7554fe79a6a8a5fc9ed38d2b1ee6f00fce1e"
+    },
+    "email": "dushyant1singh1@gmail.com",
+    "root": "E:/mtech/sem2/deep/assignment_1/BackPropagation_from_scratch",
+    "host": "samsung-book-3-pro",
+    "username": "singh",
+    "executable": "C:\\Python311\\python.exe",
+    "cpu_count": 12,
+    "cpu_count_logical": 16,
+    "cpu_freq": {
+        "current": 2200.0,
+        "min": 0.0,
+        "max": 2200.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 2200.0,
+            "min": 0.0,
+            "max": 2200.0
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 29.810543060302734,
+            "used": 6.459709167480469
+        }
+    },
+    "memory": {
+        "total": 15.570236206054688
+    }
+}

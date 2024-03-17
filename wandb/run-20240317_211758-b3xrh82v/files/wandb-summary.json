@@ -1,0 +1,1 @@
+{"accuracy": {"_type": "image-file", "sha256": "79231dda7d7f7525dedf0cdfc8000fa5c0fdad37b8914a47d95b8bd08e4796f1", "size": 431786, "path": "media/images/accuracy_0_79231dda7d7f7525dedf.png", "format": "png", "width": 2880, "height": 1800, "caption": "Local Accuracy"}, "_timestamp": 1710690480.8411393, "_runtime": 2.5286123752593994, "_step": 0, "_wandb": {"runtime": 1}}

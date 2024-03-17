@@ -154,11 +154,13 @@ class FeedForwardNN:
         weights =[]
         biases =[]
         for i in range(len(layersSize)-1):
+            
             weights.append(self.initializer([layersSize[i+1],layersSize[i]]))
             biases.append(self.initializer([layersSize[i+1],1]))
         return weights,biases
 
     def xavier(self, size):
+
         std = np.sqrt(2 / (size[0] + size[1]))
         # size[0] = next layer's neurons
         # size[1] = prev layer's neurons
@@ -417,17 +419,17 @@ classes =['Ankle boot','T-shirt/top','Dress','Pullover','sneaker','Sandal','Trou
 layers = 3
 no_of_hidden_neurons = 128
 sizeHL = [no_of_hidden_neurons for i in range(4)]
-optimizer = 'mgd'
+optimizer = 'nadam'
 batchSize = 32
-weight_decay = 0.5
+weight_decay = 0
 lr = 0.0001
-iterations = 10
+iterations = 100
 activation = 'tanh'
 initializer = 'xavier'
 loss= 'cross'
 momentum = 0.9
-beta1 = 0.5
-beta2 = 0.5
+beta1 = 0.9
+beta2 = 0.99
 split = 0.1
 total_data = train_x.shape[0]
 indices = np.arange(total_data)
@@ -444,4 +446,4 @@ print(x_train.shape,y_train.shape)
 print(x_val.shape,y_val.shape)
 # layers, sizeHL, x_train, y_train, x_val, y_val, x_test, y_test, optimizer, batchSize, weightDecay, lr, iterations, activation,initializer, loss, weightDecay
 ob = FeedForwardNN(layers,sizeHL,x_train,y_train,x_val,y_val,test_x,test_y,optimizer,batchSize,lr,iterations,activation,initializer,loss, weight_decay)
-ob.train(optimizer=optimizer,momentum=momentum)
+ob.train(optimizer=optimizer,beta1=beta1,beta2=beta2)
